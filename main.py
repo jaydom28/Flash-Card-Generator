@@ -3,7 +3,7 @@ import sys
 
 from bs4 import BeautifulSoup
 
-from GermanDictionary import get_dictionary
+from CambridgeDictionary import get_dictionary
 
 
 english_german_dictionary = get_dictionary('en', 'de')
