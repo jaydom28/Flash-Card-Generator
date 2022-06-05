@@ -5,9 +5,9 @@ class CambridgeDictionaryScraper:
     """
     Basic functionality for scraping definitions from: https://dictionary.cambridge.org
     """
-    def __init__(self, html_definition_class: str):
-        self.html_definition_class = html_definition_class
-        self.base_url = f'https://dictionary.cambridge.org/us/dictionary/{html_definition_class}'
+    def __init__(self, language: str):
+        self.language = language
+        self.base_url = f'https://dictionary.cambridge.org/us/dictionary/{self.language}'
 
     def _get_html(self, word: str) -> str:
         """
@@ -29,7 +29,7 @@ class CambridgeDictionaryScraper:
         Returns a list of tuples in the form: (part of speech, translation)
         """
         web_page_soup = BeautifulSoup(web_page_html, 'lxml')
-        definition_tags = web_page_soup.find_all('div', attrs={'class': self.html_definition_class})
+        definition_tags = web_page_soup.find_all('div', attrs={'class': self.language})
         output = []
 
         for definition in definition_tags:
@@ -44,7 +44,7 @@ class CambridgeDictionaryScraper:
         return self._get_definitions(word_html)
 
 
-class EnglishGermanDictionary:
+class EnglishGermanDictionary(CambridgeDictionaryScraper):
     """
     Scrapes definitions from the cambridge dictionary website for English - German translations
     """
@@ -59,7 +59,19 @@ class GermanEnglishDictionary(CambridgeDictionaryScraper):
     def __init__(self):
         super().__init__('german-english')
 
+def get_dictionary(from_language: str, to_language: str) -> CambridgeDictionaryScraper:
+    """
+    Takes in two languages and returns the correct dictionary to be used
+    """
+    language_tuple = (from_language, to_language)
 
+    if language_tuple == ('en', 'de'):
+        return EnglishGermanDictionary()
 
+    if language_tuple == ('de', 'en'):
+        return GermanEnglishDictionary()
+
+    print('There is no currently implemented dictionary object with the type: {from_language} -> {to_language}') 
+    return None
 
 

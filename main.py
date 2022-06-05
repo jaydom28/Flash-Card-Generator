@@ -3,11 +3,11 @@ import sys
 
 from bs4 import BeautifulSoup
 
-from GermanDictionary import EnglishGermanDictionary, GermanEnglishDictionary
+from GermanDictionary import get_dictionary
 
 
-english_german_dictionary = EnglishGermanDictionary()
-german_english_dictionary = GermanEnglishDictionary()
+english_german_dictionary = get_dictionary('en', 'de')
+german_english_dictionary = get_dictionary('de', 'en')
 
 words = sys.argv[1:]
 
