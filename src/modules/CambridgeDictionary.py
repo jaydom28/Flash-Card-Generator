@@ -47,7 +47,12 @@ class CambridgeDictionaryScraper:
         
         return output
 
-    def get_word(self, word):
+    def get_word(self, word: str) -> list[tuple[str, str]]:
+        """
+        Takes in a word as a string and then returns a list of translations for the word
+        Returns a list of tuples in the form:
+            (part of speech, translation)
+        """
         word_html = self._get_html(word)
         return self._get_definitions(word_html)
 
