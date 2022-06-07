@@ -6,6 +6,7 @@ import requests
 import sys
 
 from modules.CambridgeDictionary import GermanEnglishDictionary, EnglishGermanDictionary
+from modules import general
 
 
 def get_word_from_string(string: str) -> str:
@@ -33,7 +34,7 @@ def word_loop() -> None:
     de_en = GermanEnglishDictionary()
 
     for line in sys.stdin:
-        word = get_word_from_string(line)
+        word = line.strip()
         translations = de_en.get_word(word) or en_de.get_word(word)
         if not translations:
             print(f'Unable to get definition for: {word}')
@@ -45,21 +46,32 @@ def word_loop() -> None:
 
 def main():
     # STEP 1: Get the words to translate
-    if len(sys.argv) <= 2:
+    if len(sys.argv) < 2:
         word_loop()
-        sys.exit(0)
+        return 0
 
     en_de = EnglishGermanDictionary()
     de_en = GermanEnglishDictionary()
 
     words_file = sys.argv[1]
+    if not os.path.exists(words_file):
+        print(f'Unable to find the file: {words_file}')
+        return 1
+
 
     # STEP 2: Scrape the definitions of all the words
+    file_lines = general.get_lines_from_file(words_file)
+    for line in file_lines:
+        english_translations = de_en.get_word(line)
+        if not english_translations:
+            print(f'Unable to find definition for: {line}')
+
+        for (pos, translation) in english_translations:
+            print(f'{line} -> {translation} ({pos})')
 
     # STEP 3: Format the definitions in a CSV file
 
     # Would be cool to get pictures too for the definitions
-    print('AYO')
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
