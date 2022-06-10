@@ -7,6 +7,7 @@ import sys
 
 from modules.CambridgeDictionary import GermanEnglishDictionary, EnglishGermanDictionary
 from modules import general
+from modules.Anki import VocabularyCardMaker
 
 
 def get_word_from_string(string: str) -> str:
@@ -60,6 +61,7 @@ def main():
 
 
     # STEP 2: Scrape the definitions of all the words
+    card_maker = VocabularyCardMaker('German Vocabulary')
     file_lines = general.get_lines_from_file(words_file)
     for line in file_lines:
         english_translations = de_en.get_word(line)
@@ -67,7 +69,12 @@ def main():
             print(f'Unable to find definition for: {line}')
 
         for (pos, translation) in english_translations:
-            print(f'{line} -> {translation} ({pos})')
+            english_side = line
+            german_side = f'{translation} ({pos})'
+            print(f'{english_side} -> {german_side}')
+            card_maker.create_and_add_note(english_side, german_side)
+
+    card_maker.export_deck('test_deck.apkg')
 
     # STEP 3: Format the definitions in a CSV file
 
