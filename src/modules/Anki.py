@@ -3,6 +3,17 @@ from genanki import Note, Model, Deck, Package
 class VocabularyCardMaker:
     def __init__(self, name: str) -> None:
         self.name = name
+        self.style = """
+        .card {
+        font-family: times;
+        font-size: 30px;
+        text-align: center;
+        color: black;
+        background-color: white;
+        }
+
+        .card1 { background-color:Lavender }
+        """
         self.model = Model(
             model_id=2157302217,
             name='Vocabulary Card',
@@ -11,7 +22,8 @@ class VocabularyCardMaker:
               'name': 'Card 1',
               'qfmt': '{{Side1}}',
               'afmt': '{{Side2}}',
-            }]
+            }],
+            css=self.style
         )
         self.deck = Deck(deck_id=2157302217, name=self.name)
 

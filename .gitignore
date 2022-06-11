@@ -3,3 +3,4 @@ tags
 .python-version
 *.apkg
 *.txt
+*.csv

@@ -2,19 +2,13 @@
 Flash Card Generator driver file
 """
 import os
-import requests
 import sys
 
-from modules.CambridgeDictionary import GermanEnglishDictionary, EnglishGermanDictionary
+from typing import List, Dict, Tuple, Iterator
+
+from modules import CsvFlashCards
 from modules import general
-from modules.Anki import VocabularyCardMaker
-
-
-def get_word_from_string(string: str) -> str:
-    """
-    Takes in a string and returns the first word of the string
-    """
-    return string.split()[0]
+from modules.CambridgeDictionary import GermanEnglishDictionary, EnglishGermanDictionary
 
 
 def usage() -> None:
@@ -26,57 +20,74 @@ def usage() -> None:
     print(f'\tpython {script_name} [WORDS]')
 
 
-def word_loop() -> None:
+def get_words_from_stdin() -> List[str]:
     """
-    Infinite loop that takes in a word that can be either German or English and then returns translations, stops when
-    EOF is reached
+    Infinite loop that reads from stdin until EOF is reached and appends each line to a list
+    """
+    output = []
+
+    for line in sys.stdin:
+        output.append(line.strip())
+
+    return output
+
+
+def get_words() -> List[str]:
+    """
+    Return a list of strings from either STDIN if no args are passed in, or from the file paths passed in
+    """
+    words = []
+    if len(sys.argv) < 2:
+        words.extend(get_words_from_stdin())
+    else:
+        words = []
+        for words_file in sys.argv[1:]:
+            words_file = sys.argv[1]
+            if not os.path.exists(words_file):
+                print(f'Unable to find the file: {words_file}')
+                return 1
+            file_lines = general.get_lines_from_file(words_file) 
+            words.extend(list(file_lines))
+
+    return words
+
+
+def get_definitions(words: Iterator[str]) -> Iterator[Dict]:
+    """
+    Take in an iterable sequence of words as strings and output an iterator to translations for each every word
     """
     en_de = EnglishGermanDictionary()
     de_en = GermanEnglishDictionary()
 
-    for line in sys.stdin:
-        word = line.strip()
-        translations = de_en.get_word(word) or en_de.get_word(word)
-        if not translations:
-            print(f'Unable to get definition for: {word}')
+    for word in words:
+        german_translations = de_en.get_word(word)
+        if not german_translations:
+            print(f'FAIL: {word}')
             continue
-        
-        for (pos, translation) in translations:
-            print(f'{pos} -> {translation}')
+
+        print(f'SUCCESS: {word}')
+        for translation in german_translations:
+            yield translation
+
+
+def create_card_tuples_from_translations(translations: Iterator[Dict]) -> Iterator[Tuple[str, str, str]]:
+    return (CsvFlashCards.create_flashcard_tuple(t) for t in translations)
 
 
 def main():
     # STEP 1: Get the words to translate
-    if len(sys.argv) < 2:
-        word_loop()
-        return 0
-
-    en_de = EnglishGermanDictionary()
-    de_en = GermanEnglishDictionary()
-
-    words_file = sys.argv[1]
-    if not os.path.exists(words_file):
-        print(f'Unable to find the file: {words_file}')
-        return 1
-
+    words = get_words()
+    print(f'Creating flashcards for {len(words)} words')
 
     # STEP 2: Scrape the definitions of all the words
-    card_maker = VocabularyCardMaker('German Vocabulary')
-    file_lines = general.get_lines_from_file(words_file)
-    for line in file_lines:
-        english_translations = de_en.get_word(line)
-        if not english_translations:
-            print(f'Unable to find definition for: {line}')
-
-        for (pos, translation) in english_translations:
-            english_side = line
-            german_side = f'{translation} ({pos})'
-            print(f'{english_side} -> {german_side}')
-            card_maker.create_and_add_note(english_side, german_side)
-
-    card_maker.export_deck('test_deck.apkg')
+    translations = get_definitions(words)
 
     # STEP 3: Format the definitions in a CSV file
+    file_path = 'definitions.txt'
+    flash_card_tuples = create_card_tuples_from_translations(translations)
+    flash_card_tuples = (t for t in flash_card_tuples if t != ('', '', ''))
+    flash_card_csv = CsvFlashCards.card_tuples_to_csv(flash_card_tuples, delim='\t')
+    CsvFlashCards.write_csv(file_path, flash_card_csv)
 
     # Would be cool to get pictures too for the definitions
 
