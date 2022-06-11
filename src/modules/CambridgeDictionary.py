@@ -1,11 +1,12 @@
 """
 This module contains implementation for the Cambridge Dictionary web scrapers
 """
+from gettext import translation
 import requests
 
-from typing import Optional
+from typing import Optional, List, Tuple
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 class CambridgeDictionaryScraper:
     """
@@ -29,7 +30,7 @@ class CambridgeDictionaryScraper:
 
         return res.content
 
-    def _get_definitions(self, web_page_html: str) -> list[tuple[str, str]]:
+    def _get_definitions(self, web_page_html: str) -> List[Tuple[str, str]]:
         """
         Takes in HTML representing the web page of a word from the cambridge
         dictionary website and parses out the translations
@@ -47,7 +48,7 @@ class CambridgeDictionaryScraper:
         
         return output
 
-    def get_word(self, word: str) -> list[tuple[str, str]]:
+    def get_word(self, word: str) -> List[Tuple[str, str]]:
         """
         Takes in a word as a string and then returns a list of translations for the word
         Returns a list of tuples in the form:
@@ -65,12 +66,106 @@ class EnglishGermanDictionary(CambridgeDictionaryScraper):
         super().__init__('english-german')
 
 
+de_article_map = {
+    'feminine': 'die',
+    'masculine': 'der',
+    'neuter': 'das'
+}
+
+
+class GermanTranslation:
+    def __init__(self, word: str, gender: str, forms: List[Tuple[str, str, str]], translations: List[Tuple[str, str]]) -> None:
+        self.word = word
+        self.gender = gender
+        self.forms = forms
+        self.translations = translations
+
+    def __repr__(self) -> str:
+        output = ''
+        output += f'Word:\n\t{de_article_map[self.gender]} {self.word}\n'
+        output += 'Forms:\n'
+        if self.forms:
+            for form in self.forms:
+                output += str(form)
+
+        output += 'Translations:\n'
+        if self.translations:
+            for (pos, word) in self.translations:
+                output += f'\t{pos} {word}\n'
+
+        return output
+
+
 class GermanEnglishDictionary(CambridgeDictionaryScraper):
     """
     Scrapes definitions from the cambridge dictionary website for German - English translations
     """
     def __init__(self):
         super().__init__('german-english')
+
+    def _scrape_gender(self, translation_soup: BeautifulSoup) -> str:
+        gender_soup = translation_soup.find('span', attrs={'class': 'gc'})
+        if gender_soup:
+            gender = gender_soup.text
+
+        return gender
+
+    def _scrape_forms(self, translation_soup: BeautifulSoup) -> str:
+        form_elements = translation_soup.find_all('span', attrs={'class': 'inf-group'})
+        forms = []
+        for form in form_elements:
+            tags = (el for el in form if isinstance(el, Tag))
+            f = tuple(t.text for t in tags)
+            print(f)
+            forms.append(f)
+
+        return forms
+
+    def _scrape_word(self, translation_soup: BeautifulSoup) -> str:
+        word_soup = translation_soup.find('span', attrs={'class': 'dtrans'})
+        return word_soup.text
+    
+    def _scrape_examples(self, translation_soup: BeautifulSoup) -> str:
+        example_soups = (t for t in translation_soup.find_all('span', attrs={'class': 'eg deg'}) if isinstance(t, Tag))
+        return [e.text for e in example_soups]
+
+
+    def _get_definitions(self, web_page_html: str) -> GermanTranslation:
+        """
+        Takes in HTML representing the web page of a word from the cambridge
+        dictionary website and parses out the translations
+        Returns a list of tuples in the form:
+            (part of speech, translation)
+        """
+        web_page_soup = BeautifulSoup(web_page_html, 'lxml')
+        translations = web_page_soup.find_all('div', attrs={'class': 'kdic'})
+        # print(f'There are {len(translations)} translations')
+        parts_of_speech = set()
+
+        output = []
+        for translation_soup in translations:
+            translation = {}
+
+            translated_word = translation_soup.find('h2', attrs={'class': 'di-title'}).text
+            translation['word'] = translated_word
+
+            part_of_speech = translation_soup.find('span', attrs={'class': 'dpos'}).text
+            translation['pos'] = part_of_speech
+            if part_of_speech in parts_of_speech:
+                break
+            parts_of_speech.add(part_of_speech)
+
+            if part_of_speech.lower() == "noun":
+                gender = self._scrape_gender(translation_soup)
+                translation['gender'] = gender
+
+            translation['forms'] = self._scrape_forms(translation_soup)
+            translation['translation'] = self._scrape_word(translation_soup)
+            translation['examples'] = self._scrape_examples(translation_soup)
+
+            output.append(translation)
+
+        return output
 
 
 def get_dictionary(from_language: str, to_language: str) -> Optional[CambridgeDictionaryScraper]:
