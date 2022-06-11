@@ -42,7 +42,6 @@ def get_words() -> List[str]:
     else:
         words = []
         for words_file in sys.argv[1:]:
-            words_file = sys.argv[1]
             if not os.path.exists(words_file):
                 print(f'Unable to find the file: {words_file}')
                 return 1
@@ -70,10 +69,6 @@ def get_definitions(words: Iterator[str]) -> Iterator[Dict]:
             yield translation
 
 
-def create_card_tuples_from_translations(translations: Iterator[Dict]) -> Iterator[Tuple[str, str, str]]:
-    return (CsvFlashCards.create_flashcard_tuple(t) for t in translations)
-
-
 def main():
     # STEP 1: Get the words to translate
     words = get_words()
@@ -84,7 +79,7 @@ def main():
 
     # STEP 3: Format the definitions in a CSV file
     file_path = 'definitions.txt'
-    flash_card_tuples = create_card_tuples_from_translations(translations)
+    flash_card_tuples = (CsvFlashCards.create_flashcard_tuple(t) for t in translations)
     flash_card_tuples = (t for t in flash_card_tuples if t != ('', '', ''))
     flash_card_csv = CsvFlashCards.card_tuples_to_csv(flash_card_tuples, delim='\t')
     CsvFlashCards.write_csv(file_path, flash_card_csv)
